@@ -44,6 +44,7 @@ final class AutoroutePassRunner {
       router.resetPassProfile();
     }
     try {
+      parallelPrepass(passNo);
       long itemSelectionStart = BatchAutorouter.isBenchmarkProfileEnabled() ? System.nanoTime() : 0;
       List<Item> autorouteItemList = router.getAutorouteItems(router.board);
       if (BatchAutorouter.isBenchmarkProfileEnabled()) {
@@ -252,6 +253,103 @@ final class AutoroutePassRunner {
       router.airLine = null;
       return false;
     }
+  }
+
+  /**
+   * Embryo Router: routes the short connections of this pass on several cores at once, area by
+   * area (see {@link ParallelBoardWork}), without ripping up other wiring. Long connections,
+   * planes, failures and clashes are left to the normal single-thread pass that follows.
+   */
+  private void parallelPrepass(int passNo) {
+    int threads = router.settings.getAutorouterMaxThreads();
+    if (threads <= 1
+        || router.job == null
+        || router.isOptimizerAutorouter
+        || "false".equals(System.getProperty("embryo.parallel"))) {
+      return;
+    }
+    List<Item> items = new ArrayList<>(router.getAutorouteItems(router.board));
+    if (items.size() < 2 * threads) {
+      return;
+    }
+    double tileMm = 10.0;
+    try {
+      tileMm = Double.parseDouble(System.getProperty("embryo.route_tile_mm", "10"));
+    } catch (NumberFormatException ignored) {
+    }
+    final double maxLength = 0.75 * ParallelBoardWork.mmToBoard(router.board, tileMm);
+    ParallelBoardWork work = new ParallelBoardWork(router.board, threads, router.thread, tileMm);
+    final Map<app.freerouting.board.facade.RoutingBoard, BatchAutorouter> workers =
+        Collections.synchronizedMap(new java.util.IdentityHashMap<>());
+    int queued = 0;
+    int longOnes = 0;
+    for (Item item : items) {
+      if (router.isPlaneItem(item, router.board)) {
+        continue;
+      }
+      for (int i = 0; i < item.netCount(); i++) {
+        final int netNo = item.getNetNumber(i);
+        Set<Item> unconnected = item.getUnconnectedSet(netNo);
+        if (unconnected.isEmpty()) {
+          continue;
+        }
+        app.freerouting.geometry.planar.FloatLine air =
+            AutorouteAirlineCalculator.calculateAirline(unconnected, item.getConnectedSet(netNo));
+        if (air == null || air.a == null || air.b == null) {
+          continue;
+        }
+        if (air.a.distance(air.b) > maxLength) {
+          longOnes++;
+          continue;
+        }
+        app.freerouting.geometry.planar.FloatPoint mid = air.a.middlePoint(air.b);
+        final int itemId = item.getId();
+        work.add(
+            mid.x,
+            mid.y,
+            copy -> {
+              Item copyItem = copy.getItem(itemId);
+              if (copyItem == null || copyItem.getUnconnectedSet(netNo).isEmpty()) {
+                return;
+              }
+              BatchAutorouter worker =
+                  workers.computeIfAbsent(
+                      copy,
+                      b -> {
+                        BatchAutorouter w =
+                            new BatchAutorouter(
+                                router.thread,
+                                b,
+                                router.settings,
+                                router.isRemoveUnconnectedVias(),
+                                router.preferredDirections,
+                                router.getStartRipupCosts(),
+                                router.getTracePullTightAccuracy());
+                        w.embryoNoRipup = true;
+                        return w;
+                      });
+              copy.startMarkingChangedArea();
+              worker.autorouteItem(
+                  copyItem, netNo, new TreeSet<>(), new LinkedHashMap<>(), passNo);
+            });
+        queued++;
+      }
+    }
+    if (queued < 2 * threads) {
+      return;
+    }
+    router.job.logInfo(
+        "Embryo Router pass #"
+            + passNo
+            + ": routing "
+            + queued
+            + " short connections on "
+            + threads
+            + " cores ("
+            + longOnes
+            + " long ones stay single-thread).");
+    ParallelBoardWork.Stats stats = work.run();
+    router.job.logInfo("Embryo Router pass #" + passNo + " parallel part done: " + stats + ".");
   }
 
   private void reorderSingleThreadItems(List<Item> autorouteItemList, int passNo) {

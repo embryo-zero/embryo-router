@@ -160,6 +160,15 @@ public class CliSettings implements SettingsSource {
       }
 
       ReflectionUtil.setFieldValue(settings, fieldPath, value);
+      if ("router.max_threads".equals(propertyName)) {
+        // Embryo Router: -mt / --router.max_threads sets the cores for fanout, routing and the
+        // optimizer together; 0 means every core of this computer.
+        try {
+          settings.setMaxThreads(Integer.parseInt(value.trim()));
+        } catch (NumberFormatException ignored) {
+          // left as parsed above
+        }
+      }
       parsedArguments.put(propertyName, value);
       FRLogger.debug("Applied CLI router setting: " + propertyName + " = " + value);
     } catch (Exception e) {

@@ -69,6 +69,8 @@ public final class BatchAutorouter extends NamedAlgorithm {
 
   final boolean removeUnconnectedVias;
   final boolean preferredDirections;
+  /** Embryo Router: set on the parallel workers, which must never rip up other wiring. */
+  boolean embryoNoRipup;
   final AutorouteControl.ExpansionCostFactor[] traceCosts;
   final boolean retainAutorouteDatabase;
   final int startRipupCosts;

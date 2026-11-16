@@ -68,9 +68,19 @@ final class AutorouteBatchLoop {
         (settings.optimizer != null && settings.optimizer.maxThreads != null)
             ? Math.max(1, settings.optimizer.maxThreads)
             : 1;
+    int cores = Runtime.getRuntime().availableProcessors();
+    int routeThreads = settings.getAutorouterMaxThreads();
     job.logInfo(
-        "Pipeline thread limits: autorouter pass is single-threaded, optimizer.max_threads="
+        "Embryo Router: this computer has "
+            + cores
+            + " cores. Using "
+            + routeThreads
+            + " for fanout"
+            + (routeThreads > 1 ? " (parallel areas)" : "")
+            + " and "
             + optimizerThreads
+            + " for the optimizer. Choose with -mt <number>; -mt 0 uses all "
+            + cores
             + ".");
 
     // Capture initial state for session summary

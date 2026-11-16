@@ -106,6 +106,11 @@ public final class BatchFanout {
         fanoutInstance.deadlineMs = fanoutStart + timeoutSeconds * 1000;
       }
     }
+    // Embryo Router: fan out on all the cores first; the passes below finish whatever is left.
+    int parallelThreads = settings.getAutorouterMaxThreads();
+    if (parallelThreads > 1 && !"false".equals(System.getProperty("embryo.parallel"))) {
+      fanoutInstance.parallelPrepass(parallelThreads);
+    }
     int maxPasses =
         settings.fanout != null && settings.fanout.maxPasses != null
             ? settings.fanout.maxPasses
@@ -168,6 +173,77 @@ public final class BatchFanout {
     long totalDurationMillis = Math.max(0, System.currentTimeMillis() - fanoutStart);
     return new FanoutRunSummary(
         completedPasses, totalDurationMillis, finalEscape, fanoutInstance.isTimedOut);
+  }
+
+  /** True if the net may use vias, the same test the fanout pass makes before each pin. */
+  private boolean canUseVias(int netNumber) {
+    app.freerouting.rules.Net net = this.routingBoard.rules.nets.get(netNumber);
+    if (net == null) {
+      return true;
+    }
+    app.freerouting.rules.NetClass netClass = net.getNetClass();
+    app.freerouting.rules.ViaRule viaRule = netClass != null ? netClass.getViaRule() : null;
+    boolean hasBoardVias =
+        !this.routingBoard.rules.viaRules.isEmpty()
+            && this.routingBoard.rules.viaRules.firstElement().viaCount() > 0;
+    boolean fallbackAllowed =
+        this.settings.fanout != null
+            && Boolean.TRUE.equals(this.settings.fanout.fallbackToBoardVias)
+            && hasBoardVias;
+    return (viaRule != null && viaRule.viaCount() > 0) || fallbackAllowed;
+  }
+
+  /**
+   * Embryo Router: fans out every pin that still needs it on several cores at once, area by area
+   * (see {@link ParallelBoardWork}), without ripping up other wiring. Pins that fail or clash are
+   * left for the normal passes, which then run as before.
+   */
+  private void parallelPrepass(int threads) {
+    final long millisPerPin =
+        this.settings.fanout != null && this.settings.fanout.maxMillisecondsPerPin != null
+            ? this.settings.fanout.maxMillisecondsPerPin
+            : 10000L;
+    double tileMm = 6.0;
+    try {
+      tileMm = Double.parseDouble(System.getProperty("embryo.tile_mm", "6"));
+    } catch (NumberFormatException ignored) {
+    }
+    ParallelBoardWork work = new ParallelBoardWork(this.routingBoard, threads, this.thread, tileMm);
+    int queued = 0;
+    for (Component currentComponent : this.sortedComponents) {
+      for (Component.Pin currentPin : currentComponent.smdPins) {
+        Pin boardPin = currentPin.boardPin;
+        final int netNumber = boardPin.getNetNumber(0);
+        if (boardPin.getUnconnectedSet(netNumber).isEmpty() || !canUseVias(netNumber)) {
+          continue;
+        }
+        final int pinId = boardPin.getId();
+        FloatPoint c = boardPin.getCenter().toFloat();
+        work.add(
+            c.x,
+            c.y,
+            copy -> {
+              if (!(copy.getItem(pinId) instanceof Pin p)) {
+                return;
+              }
+              copy.startMarkingChangedArea();
+              int maxIdBefore = copy.communication.idGenerator.maxGeneratedId();
+              AutorouteAttemptResult r =
+                  copy.fanout(p, this.settings, -1, this.thread, new TimeLimit((int) millisPerPin));
+              if (r.state == app.freerouting.autoroute.AutorouteAttemptState.ROUTED) {
+                BatchAutorouter.enforceStrictDrc(copy, netNumber, maxIdBefore);
+              }
+            });
+        queued++;
+      }
+    }
+    if (queued == 0) {
+      return;
+    }
+    FRLogger.info(
+        "Embryo Router: fanning out " + queued + " pins on " + threads + " cores (areas of " + tileMm + " mm).");
+    ParallelBoardWork.Stats stats = work.run();
+    FRLogger.info("Embryo Router parallel fanout done: " + stats + ".");
   }
 
   /** Routes a fanout pass and returns the number of new fanouted SMD-pins in this pass. */
