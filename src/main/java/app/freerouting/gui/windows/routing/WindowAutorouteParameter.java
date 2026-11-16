@@ -407,9 +407,30 @@ public class WindowAutorouteParameter extends BoardSavableSubWindow {
     this.maxThreadsField.addKeyListener(new WindowAutorouteParameter.MaxThreadsFieldKeyListener());
     this.maxThreadsField.addFocusListener(
         new WindowAutorouteParameter.MaxThreadsFieldFocusListener());
+    // Embryo Router: show how many cores this computer has and offer to use all of them.
+    final int coresOnThisComputer = Runtime.getRuntime().availableProcessors();
+    javax.swing.JPanel maxThreadsPanel =
+        new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 4, 0));
+    maxThreadsPanel.add(maxThreadsField);
+    maxThreadsPanel.add(new JLabel("of " + coresOnThisComputer + " cores"));
+    javax.swing.JButton useAllCoresButton = new javax.swing.JButton("Use all cores");
+    useAllCoresButton.setToolTipText(
+        "Fanout, routing and the optimizer use all " + coresOnThisComputer + " cores");
+    useAllCoresButton.addActionListener(
+        e -> {
+          isUpdatingFromSettings = true;
+          try {
+            boardHandling.getCurrentRoutingJob().routerSettings.setMaxThreads(coresOnThisComputer);
+          } finally {
+            isUpdatingFromSettings = false;
+          }
+          maxThreadsField.setValue(coresOnThisComputer);
+          maxThreadsInputCompleted = true;
+        });
+    maxThreadsPanel.add(useAllCoresButton);
     gridbagConstraints.gridwidth = GridBagConstraints.REMAINDER;
-    gridbag.setConstraints(maxThreadsField, gridbagConstraints);
-    mainPanel.add(maxThreadsField);
+    gridbag.setConstraints(maxThreadsPanel, gridbagConstraints);
+    mainPanel.add(maxThreadsPanel);
 
     JLabel separator2 =
         new JLabel("––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––  ");
