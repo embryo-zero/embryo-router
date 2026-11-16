@@ -41,7 +41,7 @@ public final class FreeroutingCli {
 
     FRLogger.traceEntry("FreeroutingCli.main()");
     FRLogger.info(
-        "Freerouting CLI v"
+        "Embryo Router CLI (based on Freerouting) v"
             + Constants.FREEROUTING_VERSION
             + " (build-date: "
             + Constants.FREEROUTING_BUILD_DATE

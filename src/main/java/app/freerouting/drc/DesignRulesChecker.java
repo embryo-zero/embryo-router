@@ -432,7 +432,7 @@ public class DesignRulesChecker {
   public KiCadDrcReport generateReport(String sourceFile, String coordinateUnit) {
     KiCadDrcReport report =
         new KiCadDrcReport(
-            coordinateUnit, sourceFile, "Freerouting " + Constants.FREEROUTING_VERSION);
+            coordinateUnit, sourceFile, "Embryo Router (based on Freerouting) " + Constants.FREEROUTING_VERSION);
 
     // Get all clearance violations
     Collection<ClearanceViolation> violations = getAllClearanceViolations();

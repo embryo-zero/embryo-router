@@ -57,7 +57,7 @@ public class OpenApiResource {
                     examples =
                         @ExampleObject(
                             value =
-                                "{\"openapi\":\"3.0.1\",\"info\":{\"title\":\"Freerouting API\","
+                                "{\"openapi\":\"3.0.1\",\"info\":{\"title\":\"Embryo Router API\","
                                     + "\"version\":\"1.0\"}}"))),
         @ApiResponse(responseCode = "500", description = "Failed to generate OpenAPI specification")
       })

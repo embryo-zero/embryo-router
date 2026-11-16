@@ -50,7 +50,7 @@ public class Freerouting {
 
   public static final String WEB_URL = "https://www.freerouting.app";
   public static final String VERSION_NUMBER_STRING =
-      "v"
+      "Embryo Router (based on Freerouting) v"
           + Constants.FREEROUTING_VERSION
           + " (build-date: "
           + Constants.FREEROUTING_BUILD_DATE
@@ -548,7 +548,7 @@ public class Freerouting {
     }
 
     // Log system information
-    FRLogger.info("Freerouting " + VERSION_NUMBER_STRING);
+    FRLogger.info(VERSION_NUMBER_STRING);
     FRLogger.debug(
         "[startup] user-data path : "
             + GlobalSettings.getUserDataPath()

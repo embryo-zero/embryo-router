@@ -9,7 +9,7 @@ public class UsageAndDiagnosticDataSettings implements Serializable {
 
   /** Whether analytics collection is disabled. */
   @SerializedName("disable_analytics")
-  public boolean disableAnalytics;
+  public boolean disableAnalytics = true; // Embryo Router: no usage data leaves the machine unless turned on
 
   /**
    * The {@code bigquery_service_account_key} is a JSON file generated when a new service account
