@@ -203,9 +203,9 @@ public final class BatchFanout {
         this.settings.fanout != null && this.settings.fanout.maxMillisecondsPerPin != null
             ? this.settings.fanout.maxMillisecondsPerPin
             : 10000L;
-    double tileMm = 6.0;
+    double tileMm = 3.0;
     try {
-      tileMm = Double.parseDouble(System.getProperty("embryo.tile_mm", "6"));
+      tileMm = Double.parseDouble(System.getProperty("embryo.tile_mm", "3"));
     } catch (NumberFormatException ignored) {
     }
     ParallelBoardWork work = new ParallelBoardWork(this.routingBoard, threads, this.thread, tileMm);

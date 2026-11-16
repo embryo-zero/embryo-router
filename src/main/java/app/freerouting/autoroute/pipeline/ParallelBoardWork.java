@@ -132,14 +132,12 @@ final class ParallelBoardWork {
 
   private void runColour(List<List<Task>> tiles, ExecutorService pool, Stats stats) {
     int workers = Math.min(threads, tiles.size());
-    // Round-robin keeps neighbouring (busy) tiles on different workers.
-    List<List<List<Task>>> share = new ArrayList<>();
-    for (int w = 0; w < workers; w++) {
-      share.add(new ArrayList<>());
-    }
-    for (int i = 0; i < tiles.size(); i++) {
-      share.get(i % workers).add(tiles.get(i));
-    }
+    // Areas are handed out one at a time to whichever core is free, biggest first, so one busy
+    // area (a dense chip) never leaves the other cores waiting.
+    List<List<Task>> order = new ArrayList<>(tiles);
+    order.sort((a, b) -> Integer.compare(b.size(), a.size()));
+    final java.util.concurrent.ConcurrentLinkedQueue<List<Task>> queue =
+        new java.util.concurrent.ConcurrentLinkedQueue<>(order);
     final int baseMaxId = board.communication.idGenerator.maxGeneratedId();
     goneThisPhase.clear();
     List<RoutingBoard> copies = new ArrayList<>();
@@ -149,8 +147,7 @@ final class ParallelBoardWork {
     List<Future<List<TileDiff>>> futures = new ArrayList<>();
     for (int w = 0; w < workers; w++) {
       final RoutingBoard copy = copies.get(w);
-      final List<List<Task>> mine = share.get(w);
-      futures.add(pool.submit(() -> work(copy, mine)));
+      futures.add(pool.submit(() -> work(copy, queue)));
     }
     for (int w = 0; w < workers; w++) {
       List<TileDiff> diffs;
@@ -158,7 +155,7 @@ final class ParallelBoardWork {
         diffs = futures.get(w).get();
       } catch (Exception e) {
         FRLogger.error("Embryo Router: a parallel worker failed; its areas go to the normal pass", e);
-        stats.tilesRejected += share.get(w).size();
+        stats.tilesRejected++;
         continue;
       }
       Map<Integer, Integer> idMap = new HashMap<>();
@@ -176,9 +173,9 @@ final class ParallelBoardWork {
     }
   }
 
-  private List<TileDiff> work(RoutingBoard copy, List<List<Task>> tiles) {
+  private List<TileDiff> work(RoutingBoard copy, java.util.Queue<List<Task>> queue) {
     List<TileDiff> diffs = new ArrayList<>();
-    for (List<Task> tile : tiles) {
+    for (List<Task> tile; (tile = queue.poll()) != null; ) {
       if (stop != null && stop.isStopRequested()) {
         break;
       }
