@@ -10,3 +10,4 @@ All changes are on the `embryo` branch; `git log` has the full detail.
 | 2026-11-16 | settings/sources/CliSettings.java (modified) | -mt sets every stage; -mt 0 = all cores |
 | 2026-11-16 | gui/windows/routing/WindowAutorouteParameter.java (modified) | Shows the computer's cores and a "Use all cores" button |
 | 2026-11-16 | chip/Lef.java, Def.java, ChipRouter.java (new); chips/ (new) | Embryo Chip Router for microchips (SKY130) and its check flow |
+| 2026-11-16 | README.md | Embryo name at the top; the original README follows unchanged |
