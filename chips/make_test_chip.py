@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0 (Embryo Router, 2026-11-16)
 """Embryo Chip Router test designs (2026-11-16): places SKY130 standard cells in rows and connects
 each cell's output to inputs of nearby cells, like a small logic block, then writes a placed DEF.
 

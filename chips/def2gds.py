@@ -1,4 +1,5 @@
 # klayout -b -r def2gds.py -rd defin=in.def -rd out=out.gds   (Embryo Chip Router check flow)
+# SPDX-License-Identifier: GPL-3.0 (Embryo Router, 2026-11-16)
 import pya, os
 L = os.path.expanduser("~/embryo-router/chips/pdk/sky130/sky130A/libs.ref/sky130_fd_sc_hd")
 opt = pya.LoadLayoutOptions()

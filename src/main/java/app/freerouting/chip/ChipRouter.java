@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0
+// Part of Embryo Router, a modified version of Freerouting (GPL-3.0). Added by Embryo-Zero, 2026-11-16.
+
 package app.freerouting.chip;
 
 import java.nio.file.Path;

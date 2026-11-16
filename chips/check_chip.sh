@@ -1,4 +1,5 @@
 #!/bin/bash
+# SPDX-License-Identifier: GPL-3.0 (Embryo Router, 2026-11-16)
 # Embryo Chip Router check flow: route a DEF, turn it into GDS with the real SKY130 cells, run the SKY130 rule deck.
 # usage: check_chip.sh design.def [cores] [top layer]
 set -e
